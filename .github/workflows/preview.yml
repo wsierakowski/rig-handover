@@ -1,0 +1,43 @@
+# Plan morning-digest § 3 and § 4: publish a review copy of one page to GitHub Pages (ADR 0003).
+# The copy is built here and never committed. Run again with an empty marker to take it off.
+name: preview
+on:
+  workflow_dispatch:
+    inputs:
+      page:
+        description: 'rig path to save'
+        default: '/digest/2026-10-28'
+      marker:
+        description: 'LANE_MARKER for the banner; empty = "no marker set"'
+        default: ''
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable pnpm && pnpm install --frozen-lockfile
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+      - run: pnpm preview:save "$PAGE" _site/index.html
+        env:
+          PAGE: ${{ inputs.page }}
+          LANE_MARKER: ${{ inputs.marker }}
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          retention-days: 1
+      - id: deploy
+        uses: actions/deploy-pages@v5
